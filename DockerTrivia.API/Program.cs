@@ -20,6 +20,16 @@ namespace DockerTrivia.API
 
             builder.Services.AddHttpClient<ITriviaApiService, TriviaApiService>();
 
+            var httpListenPort = int.Parse(Environment.GetEnvironmentVariable("HTTPLISTENPORT") ?? "8080");
+                
+            if (httpListenPort != 8080)
+            { 
+                builder.WebHost.ConfigureKestrel(serverOptions =>
+                {
+                    serverOptions.ListenAnyIP(httpListenPort); 
+                });
+            }
+
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
