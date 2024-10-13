@@ -1,0 +1,17 @@
+﻿# Builds project in an container based on a SDK image and makes a new image from the results
+# Warning: avoid doing this in real life.
+#
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+ARG BUILD_CONFIGURATION=Release
+WORKDIR /src
+COPY ["./DockerTrivia.API/DockerTrivia.API.csproj", "."]
+RUN dotnet restore "./DockerTrivia.API.csproj"
+COPY ./DockerTrivia.API .
+
+RUN dotnet publish "./DockerTrivia.API.csproj" -c $BUILD_CONFIGURATION -o /app /p:UseAppHost=false
+
+EXPOSE 80
+WORKDIR /app
+USER app
+ENTRYPOINT ["dotnet", "DockerTrivia.API.dll"]

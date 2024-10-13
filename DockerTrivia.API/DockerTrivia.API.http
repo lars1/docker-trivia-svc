@@ -1,0 +1,6 @@
+@DockerTrivia.API_HostAddress = http://localhost:5222
+
+GET {{DockerTrivia.API_HostAddress}}/question/
+Accept: application/json
+
+###
