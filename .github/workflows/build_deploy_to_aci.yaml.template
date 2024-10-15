@@ -1,9 +1,12 @@
 # https://learn.microsoft.com/en-us/azure/container-instances/container-instances-github-action
-on: [push]
 name: ACI_deploy_workflow
-
+on:
+  pull_request:
+    types:
+      - closed
 jobs:
-    build-and-deploy:
+    build-and-deploy-if-merged:
+        if: github.event.pull_request.merged == true    
         runs-on: ubuntu-latest
         steps:
         - name: 'Checkout GitHub Action'
