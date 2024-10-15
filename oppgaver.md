@@ -22,6 +22,8 @@
 1.  Vi kan likevel undersøke den inaktive containeren:
      *  `docker container ps -a`
 
+Du vet nå at Docker (Engine) fungerer greit på maskinen, og du har fått prøvd noen kommandoer.
+
 ## 1.2 Test en webserver
 
 1.  La oss prøve å kjøre en web server:
@@ -39,6 +41,7 @@
 1.  Stopp "web"
      *  `docker stop web`
 
+Du så nå på en container som var persistent, og som kunne bare ha fortsatt å kjøre om den ikke ble stoppet. Du så også containere i prinsippet kan lytte på nettverksporter.
 
 # Oppgave 2
 
@@ -62,8 +65,7 @@
 1.  Avslutt web:
      *  `docker stop web`
 
-PID'ene er forskjellige inni container og host, men det er de samme prosessene.
-
+Du så nå at prosess ID'ene var forskjellige inni container og host - men det er faktisk de samme prosessene. 
 
 ## 2.2 Lag image fra en container
 
@@ -79,6 +81,8 @@ PID'ene er forskjellige inni container og host, men det er de samme prosessene.
 1.  Installer curl: 
      *  `apk update && apk add curl`
      *  `curl -v nrk.no` bør fungere
+1.  Installer jq også (et JSON verktøy):
+     *  `apk add jq`
 1.  Slett et trolig ubrukt directory:
      *  `rmdir /media/floppy`
 1.  Gå ut av shellet
@@ -96,6 +100,21 @@ PID'ene er forskjellige inni container og host, men det er de samme prosessene.
      *  `docker image ls`
 1.  Ta en rask kikk på layers i imaget: 
      *  `docker image history alpine-with-curl`     
+
+Du så nå hvordan du kunne gjøre endringer på writeable layer i en container, og hvordan et nytt image enkelt kunne lages fra en container, uten å bruke en Dockerfile. Du så også litt nærmere på layers-begrepet.
+
+## 2.3 Kjør container fra ditt image
+
+*Bare gjør denne om tiden tillater*
+
+1.  Start en container fra imaget du akkurat lagde
+     *  `docker run -it --rm --name awc alpine-with-curl`
+1.  Du står i et shell inni containeren.
+     *  Sjekk eventuelt `hostname`
+1.  Test curl og jq: 
+     *  `curl -g https://official-joke-api.appspot.com/jokes/random | jq`
+1.  Logg ut av container-shell:
+     *  `exit`
 
 
 # Oppgave 3: Bygg og deploy med Dockerfiles
@@ -129,6 +148,8 @@ PID'ene er forskjellige inni container og host, men det er de samme prosessene.
 1.  Stopp containeren
      *  `docker container stop trivia`
 
+Du brukte nå en Dockerfile (multi-stage) til å bygge et .NET API - et svært enkelt API riktignok, men prinsippet og stegene er stort sett de samme for å bygge store applikasjoner.
+
 ## 3.2 Bygg enda litt mer
 
 1.  Dockerfile brukt i 3.1 var multi-stage. Prøv nå å bygge samme app, men med en single stage Dockerfile.. 
@@ -139,6 +160,8 @@ PID'ene er forskjellige inni container og host, men det er de samme prosessene.
      *  Hva kan størrelsesforskjellen komme av?
 1.  Imaget kan evt slettes (ikke viktig):
      *  `docker image remove trivia-singlestage:latest`
+
+Du så nå en av ulempene dersom man hadde bruk SDK-baserte image til å både bygge og deployere applikasjoner.
 
 ## 3.3 Push til repository
 
@@ -237,7 +260,7 @@ Du kan nå besøke trivia-api kjørende på ACI. Legg merke til at den kjører p
 1.  I nettleseren din, lim inn FQDN fra over: 
      *  `http://FQDN:8080/swagger/index.html`
 1.  Det bør gå an å invokere api'et.
-1.  Du kan evt slette ressursen din når du er ferdig: 
+1.  Du kan evt slette ressursen din i Azure når du er ferdig: 
      *  `az container delete -g $RG -n $ACINAME`
 1.  Logg gjerne ut av AZ CLI nå: 
      *  `az logout`
@@ -257,18 +280,75 @@ az container create \
 
 ## 3.6 Bygg med GitHub Actions
 
-Alle de foregående manuelle stegene kan automatiseres med f.eks. GitHub Actions workflows.
+*Bare gjør denne om du får tid.*
 
-For å deployere til ACI trengs en "service principal", som har rettigheter til pull fra ACR. Men du får ikke opprettet "service principal" som vanlig "Contributor"-bruker i Azure, noe som gjelder de aller fleste brukerne i Bouvet's Azure tenant.
+For å deployere til ACI trengs en **Service Principal (SP)**, som har rettigheter til pull fra ACR. Men du får ikke opprettet Service Principal som vanlig "Contributor"-bruker i Azure, noe som gjelder de aller fleste brukerne i bedriftens Azure tenant.
 
-Dersom du har en privat Azure tenant, der du er Owner, kan du derimot gjøre dette. 
+Det er definert en SP på forhånd som vi kan bruke til å løse denne oppgaven. Den er er representert som et JSON objekt. Se presentasjonen for hvor du kan finne den. 
 
-Jeg får bygget og deployert til min private subscription i Azure med filen `.github/workflows/build_deploy_to_aci.yaml`, men det krever ganske mye oppsett for å komme dit. Etter mye om og men fungerer det likevel bra nå.
+1.  Ta en kikk på den vedlagte YAML-filen (`.github/workflows/build_deploy_to_aci.yaml.template`).
+     *  Legg merke til at den bruker endel "secrets", og disse eksisterer ikke ennå.
+1.  Definér secrets som er brukt i YAML filen.
+     *  Steg:
+         1.  Gå til GitHub repository nettsiden
+         1.  "Settings" fanen øverst på siden, ved siden av "Insights"
+         1.  "Secrets and variables" og så "Actions" under den.
+     *  Legg til hemmelighetene:
+     *  `AZURE_CREDENTIALS`
+         *  Hele JSON-representasjonen av SP, med clientId, clientSecret, tenantId osv.
+     *  `REGISTRY_LOGIN_SERVER`
+         *  Se presentasjonen om du bruker vår "standard", eller bytt til ditt eget ACR navn om du har en egen.
+     *  `REGISTRY_USERNAME`
+         *  `clientId` verdien fra SP (f.eks. fra JSON-repr). GUID alene er nok, du trenger ikke doble apostrofer.
+     *  `REGISTRY_PASSWORD`
+         *  `clientSecret` fra SP.
+     *  `ACI_UNIQUENAME`
+         *  Finn på et unikt navn til ACI resursen: bokstaver, tall og bindestrek.
+     *  `RESOURCE_GROUP`
+         *  Navn på ressursgruppen brukt over, som er der ACI(ene) skal tilhøre. Se også presentasjonen.
+1.  På tide å teste GitHub Actions workflowen som skal bygge imaget, og sørge for å deployere til Azure ACI.
+     1.  Dette kan løses enkelt i et "code space" rett på GitHub repository nettsiden.
+          *  Bruk den store grønne "Code" knappen.
+     1.  Lag en ny branch. Sjekk at du jobber på branchen.
+     1.  Rename `.yaml.template` filen til `.yaml`, eller lag en tilsvarende kopi av filen som slutter med `.yaml`.
+     1.  Commit.
+     1.  Lag en pull request fra branchen til main.
+1.  Tilbake på repository hovedsiden.
+     1.  Merge pull requesten inn i "main".
+1.  Se på GitHub Action som kjører.
+1.  Ta en kikk i Azure Portalen om du har tilgang dit.
+     *  `https://portal.azure.com` og søk etter ressursgruppenavnet brukt over.
 
-Du må kjøre endel AZ CLI kommandoer, og opprette en håndfull Secrets i GitHub. Prosessen er litt vrien, så det tar fort mer tid enn vi har tilgjengelig i kveld.
 
-Ta gjerne en kikk på tutorialen fra Microsoft om du er interessert i å gjøre dette selv: 
+### Notat om å gjøre dette fra scratch selv
 
-[Tutorial](https://learn.microsoft.com/en-us/azure/container-instances/container-instances-github-action)
+Dersom du har en privat Azure tenant, der du er Owner på subscription, kan du også opprette en Service Principal og gjøre alt selv der. Bare følg stegene i tutorialen som er linket under. Dette vil også fungere dersom du er Owner på ressursgruppen, men "bare" Contributor på subscription.
+
+Det ligger en workflow (fra tutorialen) i filen: `.github/workflows/build_deploy_to_aci.yaml.template`. Bare bytt navn på den så den slutter på `.yaml`.
+
+Se presentasjonen for navnet på **Ressursgruppen** nevnt under, samt **registry login server**.
+
+#### Tutorialen oppsummert: 
+
+1.  Ha en ACR opprettet på forhånd.
+1.  Opprett ressursgruppe for ACI(er).
+1.  Create Service Principal (SP), som er Contributor på ressursgruppen
+1.  Assign AcrPush role til SP også, med scope til ACR-ressursen.
+     *  Dette gir brukeren av SP rettigheter til push & pull images i ACR-ressursen.
+1.  Definér secrets. Meningen med disse er beskrevet ovenfor.
+     *  `AZURE_CREDENTIALS`
+     *  `REGISTRY_LOGIN_SERVER`
+     *  `REGISTRY_USERNAME`
+     *  `REGISTRY_PASSWORD`
+     *  `ACI_UNIQUENAME`
+     *  `RESOURCE_GROUP`
+1.  Branch koden.
+1.  Aktiver GitHub actions workflow ved å rename YAML filen.
+1.  Merge koden tilbake i "main" vha av Pull request f.eks.
+1.  Se at Action kjører.
+
+Tutorialen fra Microsoft om du er interessert i å gjøre dette: [Tutorial](https://learn.microsoft.com/en-us/azure/container-instances/container-instances-github-action)
+
+
 
 
